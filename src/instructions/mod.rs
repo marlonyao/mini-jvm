@@ -5,8 +5,10 @@ pub mod math;
 pub mod stack;
 pub mod control;
 pub mod invoke;
+pub mod objects;
 
 use crate::runtime::thread::{Thread, ExecutionResult};
+
 /// Main instruction dispatch. Called by the thread's execute loop.
 pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
     match opcode {
@@ -21,6 +23,8 @@ pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
         0x08 => constants::iconst(thread, 5),
         0x10 => constants::bipush(thread),
         0x11 => constants::sipush(thread),
+        0x12 => objects::ldc(thread),
+        0x13 => objects::ldc_w(thread),
 
         // Iload
         0x1A => loads::iload_n(thread, 0),
@@ -81,6 +85,11 @@ pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
         0xA7 => control::goto(thread),
         0xC6 => control::ifnull(thread),
         0xC7 => control::ifnonnull(thread),
+
+        // Object operations
+        0xBB => objects::new_op(thread),     // new
+        0xB2 => objects::getstatic(thread),  // getstatic
+        0xB3 => objects::putstatic(thread),  // putstatic
 
         // Invoke & return
         0xB6 => invoke::invokevirtual(thread),

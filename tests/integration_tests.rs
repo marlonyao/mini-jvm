@@ -233,7 +233,8 @@ fn test_static_method_call() {
     let (_max_stack, max_locals, code) = ClassLoader::get_method_code(method, class_file).unwrap();
 
     let mut thread = Thread::new(class_loader);
-    let frame = Frame::with_args(max_locals as usize, code, vec![Value::I32(3), Value::I32(4)]);
+    let mut frame = Frame::with_args(max_locals as usize, code, vec![Value::I32(3), Value::I32(4)]);
+    frame.class_name = "Calc".to_string();
     thread.push_frame(frame);
     let result = thread.execute();
 

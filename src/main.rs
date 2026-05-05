@@ -32,7 +32,7 @@ fn main() {
     // Print parsed class info
     println!("{}", class_file);
 
-    // Try to find and execute main method
+    // Resolve class name
     let class_name = match class_file.constant_pool.get(class_file.this_class) {
         Some(ConstantPoolEntry::Class { name_index }) => {
             match class_file.constant_pool.get(*name_index) {
@@ -49,11 +49,12 @@ fn main() {
         }
     };
 
-    // Look for main method: public static void main(String[] args)
+    // Load the class
     let mut class_loader = ClassLoader::new();
     class_loader.load_class_from_bytes(&class_name, &bytes)
         .expect("Failed to load class");
 
+    // Look for main method
     if let Some(main_method) = class_loader.find_method(
         class_loader.get_class(&class_name).unwrap(),
         "main",
@@ -63,9 +64,10 @@ fn main() {
             main_method,
             class_loader.get_class(&class_name).unwrap(),
         ) {
-            println!("\n--- Executing main ---");
+            println!("\n--- Executing {}.main ---", class_name);
             let mut thread = Thread::new(class_loader);
-            let frame = Frame::new(max_locals as usize, code);
+            let mut frame = Frame::new(max_locals as usize, code);
+            frame.class_name = class_name;
             thread.push_frame(frame);
             thread.execute();
             println!("--- Execution complete ---");

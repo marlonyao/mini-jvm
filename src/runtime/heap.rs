@@ -1,13 +1,14 @@
 use crate::runtime::frame::Value;
+use std::collections::HashMap;
 
 /// A simple object representation for the heap.
 #[derive(Debug, Clone)]
 pub struct JObject {
     pub class_name: String,
     pub fields: HashMap<String, Value>,
+    /// For String objects, store the string value directly
+    pub string_value: Option<String>,
 }
-
-use std::collections::HashMap;
 
 /// Simple heap using a vector with index-based references.
 pub struct Heap {
@@ -28,6 +29,7 @@ impl Heap {
         let obj = JObject {
             class_name,
             fields: HashMap::new(),
+            string_value: None,
         };
 
         if let Some(idx) = self.free_list.pop() {
@@ -56,6 +58,20 @@ impl Heap {
             self.objects[index] = None;
             self.free_list.push(index);
         }
+    }
+
+    /// Allocate a String object with a given value.
+    pub fn alloc_string(&mut self, value: String) -> usize {
+        let idx = self.alloc("java/lang/String".to_string());
+        self.objects[idx].as_mut().unwrap().string_value = Some(value);
+        idx
+    }
+
+    /// Get the string value of an object (if it's a String).
+    pub fn get_string(&self, index: usize) -> Option<&str> {
+        self.objects.get(index)
+            .and_then(|o| o.as_ref())
+            .and_then(|o| o.string_value.as_deref())
     }
 }
 

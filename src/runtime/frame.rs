@@ -56,6 +56,8 @@ pub struct Frame {
     pub operand_stack: Vec<Value>,
     /// Index into the constant pool of the class this frame belongs to
     pub constant_pool_idx: usize,
+    /// Name of the class this frame belongs to (for constant pool resolution)
+    pub class_name: String,
     /// The bytecode being executed
     pub code: Vec<u8>,
     /// Program counter (index into code)
@@ -72,6 +74,7 @@ impl Frame {
             locals,
             operand_stack: Vec::new(),
             constant_pool_idx: 0,
+            class_name: String::new(),
             code,
             pc: 0,
         }
