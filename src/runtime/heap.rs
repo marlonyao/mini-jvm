@@ -14,6 +14,10 @@ pub struct JObject {
 pub struct Heap {
     objects: Vec<Option<JObject>>,
     free_list: Vec<usize>,
+    /// Array data for int/byte/short/char/long/float/double arrays
+    array_data: HashMap<usize, Vec<Value>>,
+    /// Array data for reference arrays
+    array_refs: HashMap<usize, Vec<Value>>,
 }
 
 impl Heap {
@@ -21,6 +25,8 @@ impl Heap {
         Heap {
             objects: Vec::new(),
             free_list: Vec::new(),
+            array_data: HashMap::new(),
+            array_refs: HashMap::new(),
         }
     }
 
@@ -72,6 +78,72 @@ impl Heap {
         self.objects.get(index)
             .and_then(|o| o.as_ref())
             .and_then(|o| o.string_value.as_deref())
+    }
+
+    // --- Array support ---
+
+    /// Allocate a new array on the heap.
+    pub fn alloc_array(&mut self, class_name: String, length: usize) -> usize {
+        let mut obj = JObject {
+            class_name,
+            fields: HashMap::new(),
+            string_value: None,
+        };
+        // Store array data in special fields
+        obj.fields.insert("$length".to_string(), Value::I32(length as i32));
+        obj.fields.insert("$data".to_string(), Value::Null); // marker
+        // Store actual array data separately
+        let idx = if let Some(free_idx) = self.free_list.pop() {
+            self.objects[free_idx] = Some(obj);
+            free_idx
+        } else {
+            let idx = self.objects.len();
+            self.objects.push(Some(obj));
+            idx
+        };
+        // Initialize array elements (stored in a side table)
+        self.array_data.insert(idx, vec![Value::I32(0); length]);
+        self.array_refs.insert(idx, vec![Value::Null; length]);
+        idx
+    }
+
+    /// Get the length of an array.
+    pub fn get_array_length(&self, index: usize) -> usize {
+        self.array_data.get(&index).map(|a| a.len()).unwrap_or(0)
+    }
+
+    /// Get an int element from an array.
+    pub fn get_array_int(&self, index: usize, element_index: usize) -> i32 {
+        self.array_data.get(&index)
+            .and_then(|a| a.get(element_index))
+            .map(|v| v.as_i32())
+            .unwrap_or(0)
+    }
+
+    /// Set an int element in an array.
+    pub fn set_array_int(&mut self, index: usize, element_index: usize, value: i32) {
+        if let Some(a) = self.array_data.get_mut(&index) {
+            if element_index < a.len() {
+                a[element_index] = Value::I32(value);
+            }
+        }
+    }
+
+    /// Get a reference element from an array.
+    pub fn get_array_ref(&self, index: usize, element_index: usize) -> Value {
+        self.array_refs.get(&index)
+            .and_then(|a| a.get(element_index))
+            .cloned()
+            .unwrap_or(Value::Null)
+    }
+
+    /// Set a reference element in an array.
+    pub fn set_array_ref(&mut self, index: usize, element_index: usize, value: Value) {
+        if let Some(a) = self.array_refs.get_mut(&index) {
+            if element_index < a.len() {
+                a[element_index] = value;
+            }
+        }
     }
 }
 

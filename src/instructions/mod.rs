@@ -6,6 +6,7 @@ pub mod stack;
 pub mod control;
 pub mod invoke;
 pub mod objects;
+pub mod arrays;
 
 use crate::runtime::thread::{Thread, ExecutionResult};
 
@@ -90,6 +91,21 @@ pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
         0xBB => objects::new_op(thread),     // new
         0xB2 => objects::getstatic(thread),  // getstatic
         0xB3 => objects::putstatic(thread),  // putstatic
+
+        // Array operations
+        0xBC => arrays::newarray(thread),    // newarray
+        0xBD => arrays::anewarray(thread),   // anewarray
+        0x2E => arrays::iaload(thread),      // iaload
+        0x4F => arrays::iastore(thread),     // iastore
+        0x32 => arrays::aaload(thread),      // aaload
+        0x53 => arrays::aastore(thread),     // aastore
+        0xBE => arrays::arraylength(thread), // arraylength
+        0x33 => arrays::baload(thread),      // baload
+        0x54 => arrays::bastore(thread),     // bastore
+        0x34 => arrays::caload(thread),      // caload
+        0x55 => arrays::castore(thread),     // castore
+        0x35 => arrays::saload(thread),      // saload
+        0x56 => arrays::sastore(thread),     // sastore
 
         // Invoke & return
         0xB6 => invoke::invokevirtual(thread),
