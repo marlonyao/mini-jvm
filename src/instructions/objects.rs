@@ -81,8 +81,10 @@ pub fn getstatic(thread: &mut Thread) -> ExecutionResult {
         let idx = thread.heap.alloc("java/io/PrintStream".to_string());
         thread.current_frame().push(Value::Object(idx));
     } else {
-        // For other fields, push null as placeholder
-        thread.current_frame().push(Value::Null);
+        // Look up static field from heap
+        let key = format!("{}.{}", field_class, field_name);
+        let val = thread.heap.get_static_field(&key);
+        thread.current_frame().push(val);
     }
     ExecutionResult::Continue
 }
@@ -90,8 +92,31 @@ pub fn getstatic(thread: &mut Thread) -> ExecutionResult {
 /// putstatic: set static field in class
 pub fn putstatic(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
-    let _index = frame.read_u2();
-    let _val = frame.pop();
+    let index = frame.read_u2();
+    let val = frame.pop();
+
+    let class_name = thread.current_frame().class_name.clone();
+    let (field_class, field_name) = {
+        let class_file = thread.class_loader.get_class(&class_name).unwrap();
+        match class_file.constant_pool.get(index) {
+            Some(crate::classfile::ConstantPoolEntry::Fieldref { class_index, name_and_type_index }) => {
+                let fc = thread.class_loader.resolve_class_name(class_file, *class_index).unwrap();
+                match class_file.constant_pool.get(*name_and_type_index) {
+                    Some(crate::classfile::ConstantPoolEntry::NameAndType { name_index, descriptor_index: _ }) => {
+                        match class_file.constant_pool.get(*name_index) {
+                            Some(crate::classfile::ConstantPoolEntry::Utf8(n)) => (fc, n.clone()),
+                            _ => panic!("Invalid field name"),
+                        }
+                    }
+                    _ => panic!("Invalid NameAndType for putstatic"),
+                }
+            }
+            _ => panic!("Expected Fieldref at index {}", index),
+        }
+    };
+
+    let key = format!("{}.{}", field_class, field_name);
+    thread.heap.set_static_field(key, val);
     ExecutionResult::Continue
 }
 
@@ -109,6 +134,81 @@ pub fn new_op(thread: &mut Thread) -> ExecutionResult {
 
     let obj_idx = thread.heap.alloc(target_class);
     thread.current_frame().push(Value::Object(obj_idx));
+    ExecutionResult::Continue
+}
+
+/// getfield: get field from object
+/// Stack: ..., objectref -> ..., value
+pub fn getfield(thread: &mut Thread) -> ExecutionResult {
+    let frame = thread.current_frame();
+    let index = frame.read_u2();
+
+    let class_name = thread.current_frame().class_name.clone();
+    let field_name = {
+        let class_file = thread.class_loader.get_class(&class_name).unwrap();
+        match class_file.constant_pool.get(index) {
+            Some(crate::classfile::ConstantPoolEntry::Fieldref { class_index: _, name_and_type_index }) => {
+                match class_file.constant_pool.get(*name_and_type_index) {
+                    Some(crate::classfile::ConstantPoolEntry::NameAndType { name_index, descriptor_index: _ }) => {
+                        match class_file.constant_pool.get(*name_index) {
+                            Some(crate::classfile::ConstantPoolEntry::Utf8(n)) => n.clone(),
+                            _ => panic!("Invalid field name"),
+                        }
+                    }
+                    _ => panic!("Invalid NameAndType for getfield"),
+                }
+            }
+            _ => panic!("Expected Fieldref at index {}", index),
+        }
+    };
+
+    let obj_ref = thread.current_frame().pop();
+    match obj_ref {
+        Value::Object(idx) => {
+            let obj = thread.heap.get(idx).unwrap();
+            let val = obj.fields.get(&field_name).cloned().unwrap_or(Value::I32(0));
+            thread.current_frame().push(val);
+        }
+        Value::Null => panic!("NullPointerException: getfield {}", field_name),
+        _ => panic!("getfield: expected object reference"),
+    }
+    ExecutionResult::Continue
+}
+
+/// putfield: set field in object
+/// Stack: ..., objectref, value -> ...
+pub fn putfield(thread: &mut Thread) -> ExecutionResult {
+    let frame = thread.current_frame();
+    let index = frame.read_u2();
+
+    let class_name = thread.current_frame().class_name.clone();
+    let field_name = {
+        let class_file = thread.class_loader.get_class(&class_name).unwrap();
+        match class_file.constant_pool.get(index) {
+            Some(crate::classfile::ConstantPoolEntry::Fieldref { class_index: _, name_and_type_index }) => {
+                match class_file.constant_pool.get(*name_and_type_index) {
+                    Some(crate::classfile::ConstantPoolEntry::NameAndType { name_index, descriptor_index: _ }) => {
+                        match class_file.constant_pool.get(*name_index) {
+                            Some(crate::classfile::ConstantPoolEntry::Utf8(n)) => n.clone(),
+                            _ => panic!("Invalid field name"),
+                        }
+                    }
+                    _ => panic!("Invalid NameAndType for putfield"),
+                }
+            }
+            _ => panic!("Expected Fieldref at index {}", index),
+        }
+    };
+
+    let value = thread.current_frame().pop();
+    let obj_ref = thread.current_frame().pop();
+    match obj_ref {
+        Value::Object(idx) => {
+            thread.heap.get_mut(idx).unwrap().fields.insert(field_name, value);
+        }
+        Value::Null => panic!("NullPointerException: putfield {}", field_name),
+        _ => panic!("putfield: expected object reference"),
+    }
     ExecutionResult::Continue
 }
 

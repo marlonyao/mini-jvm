@@ -91,6 +91,8 @@ pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
         0xBB => objects::new_op(thread),     // new
         0xB2 => objects::getstatic(thread),  // getstatic
         0xB3 => objects::putstatic(thread),  // putstatic
+        0xB4 => objects::getfield(thread),   // getfield
+        0xB5 => objects::putfield(thread),   // putfield
 
         // Array operations
         0xBC => arrays::newarray(thread),    // newarray

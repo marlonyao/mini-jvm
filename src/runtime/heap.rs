@@ -18,6 +18,8 @@ pub struct Heap {
     array_data: HashMap<usize, Vec<Value>>,
     /// Array data for reference arrays
     array_refs: HashMap<usize, Vec<Value>>,
+    /// Static fields: "ClassName.fieldName" -> Value
+    static_fields: HashMap<String, Value>,
 }
 
 impl Heap {
@@ -27,6 +29,7 @@ impl Heap {
             free_list: Vec::new(),
             array_data: HashMap::new(),
             array_refs: HashMap::new(),
+            static_fields: HashMap::new(),
         }
     }
 
@@ -144,6 +147,16 @@ impl Heap {
                 a[element_index] = value;
             }
         }
+    }
+
+    /// Get a static field value.
+    pub fn get_static_field(&self, key: &str) -> Value {
+        self.static_fields.get(key).cloned().unwrap_or(Value::I32(0))
+    }
+
+    /// Set a static field value.
+    pub fn set_static_field(&mut self, key: String, value: Value) {
+        self.static_fields.insert(key, value);
     }
 }
 
