@@ -5,6 +5,8 @@ use crate::runtime::class_loader::ClassLoader;
 /// Execution result from running a frame.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExecutionResult {
+    /// Continue executing the next instruction.
+    Continue,
     /// Method returned normally, optionally with a value.
     Return(Option<crate::runtime::frame::Value>),
     /// Invoking another method — need to create a new frame.
@@ -58,6 +60,9 @@ impl Thread {
             let result = crate::instructions::execute_instruction(self, opcode);
 
             match result {
+                ExecutionResult::Continue => {
+                    // Just continue to the next instruction
+                }
                 ExecutionResult::Return(val) => {
                     self.pop_frame();
                     // If there's a caller frame, push the return value

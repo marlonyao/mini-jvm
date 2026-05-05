@@ -5,7 +5,7 @@ pub fn iload_n(thread: &mut Thread, index: usize) -> ExecutionResult {
     let frame = thread.current_frame();
     let val = frame.locals[index].clone();
     frame.push(val);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// iload: load int from local variable (with index operand)
@@ -14,7 +14,7 @@ pub fn iload(thread: &mut Thread) -> ExecutionResult {
     let index = frame.read_u1() as usize;
     let val = frame.locals[index].clone();
     frame.push(val);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// aload_<n>: load reference from local variable
@@ -22,7 +22,7 @@ pub fn aload_n(thread: &mut Thread, index: usize) -> ExecutionResult {
     let frame = thread.current_frame();
     let val = frame.locals[index].clone();
     frame.push(val);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// aload: load reference from local variable (with index operand)
@@ -31,7 +31,7 @@ pub fn aload(thread: &mut Thread) -> ExecutionResult {
     let index = frame.read_u1() as usize;
     let val = frame.locals[index].clone();
     frame.push(val);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 #[cfg(test)]
@@ -60,7 +60,6 @@ mod tests {
     #[test]
     fn test_iload() {
         let mut t = make_thread_with_locals(vec![Value::I32(0), Value::I32(99)]);
-        // Set up code: iload 1
         t.current_frame().code = vec![0x01];
         t.current_frame().pc = 0;
         iload(&mut t);

@@ -3,7 +3,7 @@ use crate::runtime::thread::{Thread, ExecutionResult};
 /// pop: pop top operand stack value
 pub fn pop_op(thread: &mut Thread) -> ExecutionResult {
     thread.current_frame().pop();
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// dup: duplicate top operand stack value
@@ -12,7 +12,7 @@ pub fn dup(thread: &mut Thread) -> ExecutionResult {
     let val = frame.pop();
     frame.push(val.clone());
     frame.push(val);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// swap: swap top two operand stack values
@@ -22,7 +22,7 @@ pub fn swap(thread: &mut Thread) -> ExecutionResult {
     let v2 = frame.pop();
     frame.push(v1);
     frame.push(v2);
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 #[cfg(test)]

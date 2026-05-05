@@ -7,7 +7,6 @@ pub mod control;
 pub mod invoke;
 
 use crate::runtime::thread::{Thread, ExecutionResult};
-
 /// Main instruction dispatch. Called by the thread's execute loop.
 pub fn execute_instruction(thread: &mut Thread, opcode: u8) -> ExecutionResult {
     match opcode {

@@ -4,42 +4,27 @@ use crate::runtime::thread::{Thread, ExecutionResult};
 pub fn invokevirtual(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
     let index = frame.read_u2();
-    
-    // Resolve method reference from current class's constant pool
-    // For now, we need to find the class and method
-    // The thread will handle creating the new frame
-    
     // TODO: Full implementation requires resolving the method ref and dispatching
-    // For Phase 2, return a stub that prints the method being called
     let _ = index;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// invokespecial: invoke instance initialization / super / private method
 pub fn invokespecial(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
     let index = frame.read_u2();
-    // For <init> methods (constructors), we need to:
-    // 1. Pop objectref and args
-    // 2. Find the method
-    // 3. Create a new frame and execute it
-    // For now, we just skip the method call for Object.<init>
+    // For <init> methods (constructors), just pop objectref
     let _ = index;
-    // Pop objectref (the 'this' pointer)
     let _obj = frame.pop();
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// invokestatic: invoke static method
 pub fn invokestatic(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
     let index = frame.read_u2();
-    
-    // Resolve the method reference
-    // We need to look up the current class's constant pool
-    // This requires access to the class file - for now, use a simplified approach
     let _ = index;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// ireturn: return int from method

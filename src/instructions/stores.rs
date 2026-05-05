@@ -5,7 +5,7 @@ pub fn istore_n(thread: &mut Thread, index: usize) -> ExecutionResult {
     let frame = thread.current_frame();
     let val = frame.pop();
     frame.locals[index] = val;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// istore: store int into local variable (with index operand)
@@ -14,7 +14,7 @@ pub fn istore(thread: &mut Thread) -> ExecutionResult {
     let index = frame.read_u1() as usize;
     let val = frame.pop();
     frame.locals[index] = val;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// astore_<n>: store reference into local variable
@@ -22,7 +22,7 @@ pub fn astore_n(thread: &mut Thread, index: usize) -> ExecutionResult {
     let frame = thread.current_frame();
     let val = frame.pop();
     frame.locals[index] = val;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// astore: store reference into local variable (with index operand)
@@ -31,7 +31,7 @@ pub fn astore(thread: &mut Thread) -> ExecutionResult {
     let index = frame.read_u1() as usize;
     let val = frame.pop();
     frame.locals[index] = val;
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 #[cfg(test)]

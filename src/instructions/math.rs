@@ -7,7 +7,7 @@ pub fn iadd(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i32();
     let a = frame.pop_i32();
     frame.push(Value::I32(a.wrapping_add(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// isub: subtract integers
@@ -16,7 +16,7 @@ pub fn isub(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i32();
     let a = frame.pop_i32();
     frame.push(Value::I32(a.wrapping_sub(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// imul: multiply integers
@@ -25,7 +25,7 @@ pub fn imul(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i32();
     let a = frame.pop_i32();
     frame.push(Value::I32(a.wrapping_mul(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// idiv: divide integers
@@ -34,7 +34,7 @@ pub fn idiv(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i32();
     let a = frame.pop_i32();
     frame.push(Value::I32(a.wrapping_div(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// irem: integer remainder
@@ -43,7 +43,7 @@ pub fn irem(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i32();
     let a = frame.pop_i32();
     frame.push(Value::I32(a.wrapping_rem(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// ineg: negate integer
@@ -51,7 +51,7 @@ pub fn ineg(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
     let a = frame.pop_i32();
     frame.push(Value::I32(-a));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// iinc: increment local variable by constant
@@ -61,7 +61,7 @@ pub fn iinc(thread: &mut Thread) -> ExecutionResult {
     let const_val = frame.read_i8() as i32;
     let old = frame.locals[index].as_i32();
     frame.locals[index] = Value::I32(old.wrapping_add(const_val));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// ladd: add two longs
@@ -70,7 +70,7 @@ pub fn ladd(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i64();
     let a = frame.pop_i64();
     frame.push(Value::I64(a.wrapping_add(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// lsub: subtract longs
@@ -79,7 +79,7 @@ pub fn lsub(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i64();
     let a = frame.pop_i64();
     frame.push(Value::I64(a.wrapping_sub(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// lmul: multiply longs
@@ -88,7 +88,7 @@ pub fn lmul(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i64();
     let a = frame.pop_i64();
     frame.push(Value::I64(a.wrapping_mul(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// ldiv: divide longs
@@ -97,7 +97,7 @@ pub fn ldiv(thread: &mut Thread) -> ExecutionResult {
     let b = frame.pop_i64();
     let a = frame.pop_i64();
     frame.push(Value::I64(a.wrapping_div(b)));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 /// lneg: negate long
@@ -105,7 +105,7 @@ pub fn lneg(thread: &mut Thread) -> ExecutionResult {
     let frame = thread.current_frame();
     let a = frame.pop_i64();
     frame.push(Value::I64(-a));
-    ExecutionResult::Return(None)
+    ExecutionResult::Continue
 }
 
 #[cfg(test)]
@@ -177,7 +177,6 @@ mod tests {
     fn test_iinc() {
         let mut t = make_thread();
         t.current_frame().locals[1] = Value::I32(10);
-        // Manually set up: iinc index=1, const=5
         t.current_frame().code = vec![0x01, 0x05];
         t.current_frame().pc = 0;
         iinc(&mut t);
