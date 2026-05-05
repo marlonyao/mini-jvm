@@ -12,14 +12,14 @@ pub struct JObject {
 
 /// Simple heap using a vector with index-based references.
 pub struct Heap {
-    objects: Vec<Option<JObject>>,
-    free_list: Vec<usize>,
+    pub objects: Vec<Option<JObject>>,
+    pub free_list: Vec<usize>,
     /// Array data for int/byte/short/char/long/float/double arrays
-    array_data: HashMap<usize, Vec<Value>>,
+    pub array_data: HashMap<usize, Vec<Value>>,
     /// Array data for reference arrays
-    array_refs: HashMap<usize, Vec<Value>>,
+    pub array_refs: HashMap<usize, Vec<Value>>,
     /// Static fields: "ClassName.fieldName" -> Value
-    static_fields: HashMap<String, Value>,
+    pub static_fields: HashMap<String, Value>,
 }
 
 impl Heap {
@@ -147,6 +147,11 @@ impl Heap {
                 a[element_index] = value;
             }
         }
+    }
+
+    /// Count live objects on the heap.
+    pub fn live_count(&self) -> usize {
+        self.objects.iter().filter(|o| o.is_some()).count()
     }
 
     /// Get a static field value.
