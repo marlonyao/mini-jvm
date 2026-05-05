@@ -141,12 +141,17 @@ impl Thread {
                 ExecutionResult::Continue => {}
                 ExecutionResult::Return(val) => {
                     self.pop_frame();
+                    // If there's a caller frame, push the return value
                     if let Some(caller) = self.stack.last_mut() {
                         if let Some(v) = &val {
                             caller.push(v.clone());
                         }
                     }
-                    return val;
+                    // If no more frames, this is the top-level return
+                    if self.stack.is_empty() {
+                        return val;
+                    }
+                    // Otherwise, continue executing the caller frame
                 }
                 ExecutionResult::Invoke { class_name, method_name, descriptor, args } => {
                     // Check for native method stubs first
