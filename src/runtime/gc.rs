@@ -2,7 +2,7 @@
 ///
 /// Algorithm:
 ///   1. Mark phase: trace all reachable objects from GC roots
-///      GC roots = thread stack frames (locals + operand stack) + static fields
+///      GC roots = thread stack frames (locals + operand stack) + static fields + jit_roots
 ///   2. Sweep phase: free all unmarked objects
 ///
 /// Complexity: O(V + E) where V = objects, E = reference edges
@@ -13,15 +13,15 @@ use std::collections::HashSet;
 
 /// Run a full garbage collection cycle.
 /// Returns (freed_count, remaining_count).
-pub fn gc(thread_stack: &[crate::runtime::Frame], heap: &mut Heap) -> (usize, usize) {
-    let marked = mark(thread_stack, heap);
+pub fn gc(thread_stack: &[crate::runtime::Frame], jit_roots: &[usize], heap: &mut Heap) -> (usize, usize) {
+    let marked = mark(thread_stack, jit_roots, heap);
     let freed = sweep(heap, &marked);
     let remaining = heap.live_count();
     (freed, remaining)
 }
 
 /// Mark phase: find all reachable objects.
-fn mark(thread_stack: &[crate::runtime::Frame], heap: &Heap) -> HashSet<usize> {
+fn mark(thread_stack: &[crate::runtime::Frame], jit_roots: &[usize], heap: &Heap) -> HashSet<usize> {
     let mut marked: HashSet<usize> = HashSet::new();
     let mut worklist: Vec<usize> = Vec::new();
 
@@ -39,6 +39,13 @@ fn mark(thread_stack: &[crate::runtime::Frame], heap: &Heap) -> HashSet<usize> {
             if *idx < heap.objects.len() && heap.objects[*idx].is_some() {
                 worklist.push(*idx);
             }
+        }
+    }
+
+    // Root 3: JIT code held references
+    for &idx in jit_roots {
+        if idx < heap.objects.len() && heap.objects[idx].is_some() {
+            worklist.push(idx);
         }
     }
 
@@ -135,7 +142,7 @@ mod tests {
         heap.alloc("A".to_string());
         heap.alloc("B".to_string());
         // No frames → nothing is reachable → both freed
-        let (freed, remaining) = gc(&[], &mut heap);
+        let (freed, remaining) = gc(&[], &[], &mut heap);
         assert_eq!(freed, 2);
         assert_eq!(remaining, 0);
     }
@@ -147,7 +154,7 @@ mod tests {
         let _idx1 = heap.alloc("B".to_string()); // unreachable
 
         let frame = make_frame(vec![Value::Object(idx0)], vec![]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1); // B freed
         assert_eq!(remaining, 1); // A alive
@@ -161,7 +168,7 @@ mod tests {
         heap.alloc("B".to_string()); // unreachable
 
         let frame = make_frame(vec![Value::I32(0)], vec![Value::Object(idx)]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1);
         assert_eq!(remaining, 1);
@@ -177,7 +184,7 @@ mod tests {
 
         // Only outer is a root, but inner should be kept via field reference
         let frame = make_frame(vec![Value::Object(outer)], vec![]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1); // Garbage
         assert_eq!(remaining, 2); // Outer + Inner
@@ -194,7 +201,7 @@ mod tests {
         heap.alloc("Garbage".to_string()); // unreachable
 
         let frame = make_frame(vec![Value::Object(arr)], vec![]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1); // Garbage
         assert_eq!(remaining, 3); // arr + A + B
@@ -207,7 +214,7 @@ mod tests {
         heap.set_static_field("App.instance".to_string(), Value::Object(idx));
         heap.alloc("Garbage".to_string());
 
-        let (freed, remaining) = gc(&[], &mut heap);
+        let (freed, remaining) = gc(&[], &[], &mut heap);
 
         assert_eq!(freed, 1); // Garbage
         assert_eq!(remaining, 1); // Global kept by static field
@@ -223,7 +230,7 @@ mod tests {
         heap.get_mut(b).unwrap().fields.insert("ref".to_string(), Value::Object(a));
 
         // Both unreachable → both freed
-        let (freed, remaining) = gc(&[], &mut heap);
+        let (freed, remaining) = gc(&[], &[], &mut heap);
         assert_eq!(freed, 2);
         assert_eq!(remaining, 0);
     }
@@ -238,7 +245,7 @@ mod tests {
         heap.get_mut(b).unwrap().fields.insert("ref".to_string(), Value::Object(a));
 
         let frame = make_frame(vec![Value::Object(a)], vec![]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1); // C
         assert_eq!(remaining, 2); // A + B (circular but reachable)
@@ -251,7 +258,7 @@ mod tests {
         heap.alloc("Garbage".to_string());
 
         let frame = make_frame(vec![Value::Object(s)], vec![]);
-        let (freed, remaining) = gc(&[frame], &mut heap);
+        let (freed, remaining) = gc(&[frame], &[], &mut heap);
 
         assert_eq!(freed, 1);
         assert_eq!(remaining, 1);
@@ -266,7 +273,7 @@ mod tests {
         heap.free(idx);
         heap.alloc("B".to_string());
 
-        let (freed, remaining) = gc(&[], &mut heap);
+        let (freed, remaining) = gc(&[], &[], &mut heap);
         assert_eq!(freed, 1); // B is unreachable
         assert_eq!(remaining, 0);
     }
@@ -280,9 +287,20 @@ mod tests {
 
         let frame1 = make_frame(vec![Value::Object(a)], vec![]);
         let frame2 = make_frame(vec![Value::Object(b)], vec![]);
-        let (freed, remaining) = gc(&[frame1, frame2], &mut heap);
+        let (freed, remaining) = gc(&[frame1, frame2], &[], &mut heap);
 
         assert_eq!(freed, 1); // C
         assert_eq!(remaining, 2); // A + B
+    }
+
+    #[test]
+    fn test_gc_jit_roots() {
+        let mut heap = Heap::new();
+        let a = heap.alloc("A".to_string());
+        let b = heap.alloc("B".to_string()); // unreachable
+        // Simulate JIT code holding reference to A
+        let (freed, remaining) = gc(&[], &[a], &mut heap);
+        assert_eq!(freed, 1); // B freed
+        assert_eq!(remaining, 1); // A kept by JIT root
     }
 }

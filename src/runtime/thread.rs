@@ -18,6 +18,9 @@ pub struct Thread {
     pub stack: Vec<Frame>,
     pub heap: Heap,
     pub class_loader: ClassLoader,
+    /// JIT 编译代码执行期间持有的对象引用索引
+    /// JIT 代码分配对象时 push，方法返回前 pop
+    pub jit_roots: Vec<usize>,
 }
 
 /// Check if a method is a native method we handle with a stub.
@@ -105,7 +108,23 @@ impl Thread {
             stack: Vec::new(),
             heap: Heap::new(),
             class_loader,
+            jit_roots: Vec::new(),
         }
+    }
+
+    /// Register an object reference as a JIT root (prevents GC from collecting it)
+    pub fn jit_root_push(&mut self, obj_idx: usize) {
+        self.jit_roots.push(obj_idx);
+    }
+
+    /// Remove the last JIT root (e.g., when JIT method returns)
+    pub fn jit_root_pop(&mut self) -> Option<usize> {
+        self.jit_roots.pop()
+    }
+
+    /// Get current JIT roots for GC scanning
+    pub fn jit_roots(&self) -> &[usize] {
+        &self.jit_roots
     }
 
     /// Push a frame onto the call stack.
